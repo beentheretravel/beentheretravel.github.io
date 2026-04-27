@@ -13,14 +13,19 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Postgres client
-        run: sudo apt-get install postgresql-client -y
+      - name: Install Postgres 17 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
 
       - name: Run backup
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir backup
+          pg_dump --version
           pg_dump "$SUPABASE_DB_URL" > backup/full.sql
 
       - name: Upload artifact
