@@ -25,8 +25,8 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir backup
-          pg_dump --version
-          pg_dump "$SUPABASE_DB_URL" > backup/full.sql
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" > backup/full.sql
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
