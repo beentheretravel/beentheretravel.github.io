@@ -25,12 +25,26 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p backup
-          /usr/lib/postgresql/17/bin/pg_dump --version
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" > backup/full.sql
+
+      - name: Install Supabase CLI
+        run: |
+          curl -fsSL https://supabase.com/install.sh | sh
+          echo "$HOME/.supabase/bin" >> $GITHUB_PATH
+
+      - name: Backup storage (images/files)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          mkdir -p storage-backup
+          supabase login --token $SUPABASE_ACCESS_TOKEN
+          supabase storage download --project-ref pwjjbvnnevqtswgcljld --recursive storage-backup
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
           name: supabase-backup-${{ github.run_number }}
-          path: backup
+          path: |
+            backup
+            storage-backup
           retention-days: 7
