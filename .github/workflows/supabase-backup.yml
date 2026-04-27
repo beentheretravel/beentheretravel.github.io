@@ -28,9 +28,9 @@ jobs:
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" > backup/full.sql
 
       - name: Install Supabase CLI
-        run: |
-          curl -fsSL https://supabase.com/install.sh | sh
-          echo "$HOME/.supabase/bin" >> $GITHUB_PATH
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
 
       - name: Backup storage (images/files)
         env:
