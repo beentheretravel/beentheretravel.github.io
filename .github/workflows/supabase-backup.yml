@@ -20,16 +20,17 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
 
-      - name: Run backup
+      - name: Run database backup
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          mkdir backup
+          mkdir -p backup
           /usr/lib/postgresql/17/bin/pg_dump --version
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" > backup/full.sql
 
-      - name: Upload artifact
+      - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supabase-backup
+          name: supabase-backup-${{ github.run_number }}
           path: backup
+          retention-days: 7
