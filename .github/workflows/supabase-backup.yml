@@ -27,18 +27,64 @@ jobs:
           mkdir -p backup
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" > backup/full.sql
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v2
-        with:
-          version: latest
-
-      - name: Backup storage (images/files)
+      - name: Backup storage
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: https://pwjjbvnnevqtswgcljld.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          npm install @supabase/supabase-js
           mkdir -p storage-backup
-          supabase login --token $SUPABASE_ACCESS_TOKEN
-          supabase storage download --project-ref pwjjbvnnevqtswgcljld --recursive storage-backup
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const { createClient } = require('@supabase/supabase-js');
+
+          const supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          );
+
+          async function downloadFolder(bucket, prefix = '') {
+            const { data, error } = await supabase.storage.from(bucket).list(prefix, {
+              limit: 1000,
+              offset: 0
+            });
+
+            if (error) throw error;
+
+            for (const item of data) {
+              const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+
+              if (item.metadata) {
+                const { data: fileData, error: downloadError } =
+                  await supabase.storage.from(bucket).download(itemPath);
+
+                if (downloadError) throw downloadError;
+
+                const arrayBuffer = await fileData.arrayBuffer();
+                const outputPath = path.join('storage-backup', bucket, itemPath);
+                fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+                fs.writeFileSync(outputPath, Buffer.from(arrayBuffer));
+              } else {
+                await downloadFolder(bucket, itemPath);
+              }
+            }
+          }
+
+          async function main() {
+            const { data: buckets, error } = await supabase.storage.listBuckets();
+            if (error) throw error;
+
+            for (const bucket of buckets) {
+              await downloadFolder(bucket.name);
+            }
+          }
+
+          main().catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
